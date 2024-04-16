@@ -1,6 +1,6 @@
 "use client"
 
-import * as React from "react"
+import React, { useState } from 'react';
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -66,7 +66,7 @@ export type Response = {
     name: string | null
 }
 
-const convoData: Response[] = [
+const initialConvoData: Response[] = [
   {
       "id": "0e08d566-df5d-4f6b-9ae1-8c6ee4972dd3",
       "timestamp": 1708125486.151514,
@@ -414,8 +414,76 @@ export function DataTableDemo() {
   const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({})
   const [rowSelection, setRowSelection] = React.useState({})
 
+  // const [isDialogOpen, setIsDialogOpen] = React.useState(false);
+  const [command, setCommand] = React.useState('');
+  const [convoData, setConvoData] = useState<Response[]>(initialConvoData);
+  // require('dotenv').config();
+  // console.log('API Key:', process.env.OPENAI_API_KEY);
+  // const openai = new OpenAI({
+  //     apiKey: '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',
+  //     dangerouslyAllowBrowser: true,
+  // });
+  
+
+  const handleCommandSubmit = async () => {
+    const messages = convoData.map(item => {
+      // Ensure each message is structured properly
+      return {
+        role: item.role === "tool" ? "assistant" : item.role, // Convert tool to assistant if not following a tool_calls
+        content: item.content
+      };
+    });
+
+    // Append the new command from the user
+    messages.push({
+      role: "user", // Assuming the command is always from the user's perspective
+      content: "Return the entire conversation but" + command + ". Do not ask any follow up questions. Just modify and return the JSON immediately. The return object's data segment should include many json objects. Each json object should contain the following attributes: id, timestamp, role, content, tool_calls, tool_call_id, name (of the tool call). Return the entire conversation data with your changes applied."
+    });
+
+    try {
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer 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',
+        },
+        body: JSON.stringify({
+          model: 'gpt-3.5-turbo',
+          messages: messages,
+          temperature: 0.7,
+        }),
+      });
+      const data = await response.json();
+      if (response.ok && data.choices && data.choices.length > 0) {
+        const newText = data.choices[0].message.content; // Assuming the API response structure is correct
+        console.log("Received Data:", newText);
+
+        // Validate and update convoData with the new text
+        if (newText) {
+            try {
+                const updatedConvoData = JSON.parse(newText);
+                console.log("updatedConvoData:", updatedConvoData.data);
+                setConvoData(updatedConvoData.data); // Update your state here
+            } catch (e) {
+                console.error("Error parsing updated conversation data:", e);
+            }
+        } else {
+            console.error('Received undefined or incorrect data structure:', newText);
+        }
+      } else {
+          console.error('API Request Failed:', response.status, data);
+      }
+    } catch (error) {
+      // Detailed error logging
+      console.error('Error submitting command to OpenAI:', error);
+      if (error instanceof Error) {
+        console.log('Error details:', error.message);
+      }
+    }
+  }
+  
   const table = useReactTable<Response>({
-    data:   convoData,
+    data: convoData,
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
@@ -431,55 +499,6 @@ export function DataTableDemo() {
       rowSelection,
     },
   })
-
-  // const [isDialogOpen, setIsDialogOpen] = React.useState(false);
-  const [command, setCommand] = React.useState('');
-  require('dotenv').config();
-  console.log('API Key:', process.env.OPENAI_API_KEY);
-  const openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-  });
-  
-
-  const handleCommandSubmit = async () => {
-    console.log("Command Submitted: ", command);
-    console.log("Convo Data: ", convoData);
-  
-    const messages = convoData.map(item => ({
-      role: item.role,
-      content: item.content
-    }));
-  
-    // Append the new command from the user
-    messages.push({
-      role: "user", // Assuming the command is always from the user's perspective
-      content: command
-    });
-  
-    try {
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: 'Bearer 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',
-        },
-        body: JSON.stringify({
-          model: 'gpt-3.5-turbo',
-          messages: messages,
-          temperature: 0.7,
-        }),
-      });
-      const data = await response.json();
-      if (data.choices && data.choices.length > 0) {
-        const newText = data.choices[0].message.content; // Assuming the API response structure is correct
-        console.log(newText);
-        // Here you would integrate newText into your convoData or handle it as needed
-      }
-    } catch (error) {
-      console.error('Error submitting command to OpenAI:', error);
-    }
-  }
-  
  
 
   return (
