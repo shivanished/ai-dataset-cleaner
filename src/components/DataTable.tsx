@@ -445,7 +445,7 @@ export function DataTableDemo() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: 'Bearer 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',
+          Authorization: 'Bearer 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',
         },
         body: JSON.stringify({
           model: 'gpt-3.5-turbo',
