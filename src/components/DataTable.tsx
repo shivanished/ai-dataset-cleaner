@@ -23,7 +23,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
-import { OpenAI, Configuration } from 'openai';
+import { OpenAI } from 'openai';
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -434,51 +434,52 @@ export function DataTableDemo() {
 
   // const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [command, setCommand] = React.useState('');
+  require('dotenv').config();
+  console.log('API Key:', process.env.OPENAI_API_KEY);
   const openai = new OpenAI({
-    apiKey: "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",
-    dangerouslyAllowBrowser: true
+      apiKey: process.env.OPENAI_API_KEY,
   });
   
 
   const handleCommandSubmit = async () => {
     console.log("Command Submitted: ", command);
     console.log("Convo Data: ", convoData);
-
-    const messages = [
-      {
-        role: "system",
-        content: "Your job is to alter the JSON object provided by the User according to the User's command. Return the same JSON object you were given. Apply only the changes that are requested",
-      },
-      {
-        role: "user",
-        content: convoData.toLocaleString(),
-      },
-      {
-        role: "user",
-        content: command,
-      }
-    ];
-
-    // Add here the code to send data to OpenAI or any other service
+  
+    const messages = convoData.map(item => ({
+      role: item.role,
+      content: item.content
+    }));
+  
+    // Append the new command from the user
+    messages.push({
+      role: "user", // Assuming the command is always from the user's perspective
+      content: command
+    });
+  
     try {
-      const response = await fetch('https://api.openai.com/v1/chat/completions', { 
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: 'Bearer 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',
         },
-        body: JSON.stringify({ 
-          messages: messages,
+        body: JSON.stringify({
           model: 'gpt-3.5-turbo',
+          messages: messages,
           temperature: 0.7,
         }),
       });
       const data = await response.json();
-      console.log(data);
+      if (data.choices && data.choices.length > 0) {
+        const newText = data.choices[0].message.content; // Assuming the API response structure is correct
+        console.log(newText);
+        // Here you would integrate newText into your convoData or handle it as needed
+      }
     } catch (error) {
       console.error('Error submitting command to OpenAI:', error);
     }
   }
+  
  
 
   return (

@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { DataTableDemo } from "../components/DataTable";
+require('dotenv').config();
 
 export default function Home() {
   return (
